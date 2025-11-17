@@ -1,0 +1,351 @@
+name: Auto Build Python Executable
+
+on:
+  push:
+    branches: ["main", "dev"]
+    tags: ["v*"]
+    paths:
+      - "**.py"
+      - "requirements.txt"
+      - "img/**"
+      - ".github/workflows/pyinstaller-build.yml"
+  pull_request:
+    branches: ["main", "dev"]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Run unit tests
+        run: python -m unittest
+
+      - name: Build executable
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="sha-${{ github.sha }}"
+          fi
+          pyinstaller \
+            --onefile \
+            --strip \
+            --name=GithubCopilotOCS-Linux_amd64-$VERSION \
+            --clean \
+            main.py
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/GithubCopilotOCS-Linux_amd64-*
+
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Run unit tests
+        run: python -m unittest
+
+      - name: Build executable
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="sha-${{ github.sha }}"
+          fi
+          pyinstaller \
+            --onefile \
+            --strip \
+            --name=GithubCopilotOCS-Linux_arm64-$VERSION \
+            --clean \
+            main.py
+
+      - name: Upload Linux ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64-build
+          path: dist/GithubCopilotOCS-Linux_arm64-*
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+        shell: powershell
+
+      - name: Download UPX
+        run: |
+          $url = "https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-win64.zip"
+          Invoke-WebRequest -Uri $url -OutFile upx.zip
+          Expand-Archive -Path upx.zip -DestinationPath upx -Force
+        shell: powershell
+
+      - name: Run unit tests
+        run: python -m unittest
+        shell: powershell
+
+      - name: Build executable
+        run: |
+          $upxDir = "$pwd\upx\upx-5.0.0-win64"
+          if (Test-Path "$upxDir\upx.exe") {
+            icacls "$upxDir\upx.exe" /grant Everyone:F | Out-Null
+          }
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}"
+          } else {
+            $version = "sha-${{ github.sha }}"
+          }
+          pyinstaller --onefile `
+            --upx-dir "$upxDir" `
+            --name=GithubCopilotOCS-Win64-$version `
+            --clean `
+            main.py
+        shell: powershell
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist\GithubCopilotOCS-Win64-*.exe
+
+  build-macos-arm:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Run unit tests
+        run: python -m unittest
+
+      - name: Build executable
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="sha-${{ github.sha }}"
+          fi
+          pyinstaller \
+            --onefile \
+            --strip \
+            --name=GithubCopilotOCS-macOS_arm64-$VERSION \
+            --clean \
+            main.py
+
+      - name: Upload macOS arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm-build
+          path: dist/GithubCopilotOCS-macOS_arm64-*
+
+  build-macos-intel:
+    runs-on: macos-13
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Run unit tests
+        run: python -m unittest
+
+      - name: Build executable
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="sha-${{ github.sha }}"
+          fi
+          pyinstaller \
+            --onefile \
+            --strip \
+            --name=GithubCopilotOCS-macOS_amd64-$VERSION \
+            --clean \
+            main.py
+
+      - name: Upload macOS Intel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-intel-build
+          path: dist/GithubCopilotOCS-macOS_amd64-*
+
+  publish-release:
+    needs:
+      - build-linux
+      - build-linux-arm64
+      - build-windows
+      - build-macos-arm
+      - build-macos-intel
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Generate release notes
+        id: release_notes
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = context.ref.replace('refs/tags/', '');
+            const releasesResp = await github.rest.repos.listReleases({ owner, repo, per_page: 100 });
+            const releases = releasesResp.data;
+            const tags = releases.map(r => r.tag_name);
+            const idx = tags.indexOf(tag);
+            const prev = idx < releases.length - 1 ? releases[idx + 1] : null;
+            const since = prev ? prev.published_at : null;
+            const prevTag = prev ? prev.tag_name : null;
+            const compareUrl = prevTag ? `https://github.com/${owner}/${repo}/compare/${prevTag}...${tag}` : '';
+            const params = { owner, repo, state: 'closed', per_page: 100 };
+            if (since) params.since = since;
+            const issuesResp = await github.rest.issues.listForRepo(params);
+            const items = issuesResp.data.filter(item =>
+              !item.labels.some(lbl => ['wontfix', 'duplicate'].includes(lbl.name.toLowerCase()))
+            );
+            const groups = { Fix: [], Update: [], Feature: [] };
+            items.forEach(item => {
+              item.labels.forEach(lbl => {
+                if (lbl.name === 'bug') groups.Fix.push(item);
+                else if (lbl.name === 'update') groups.Update.push(item);
+                else if (lbl.name === 'enhancement') groups.Feature.push(item);
+              });
+            });
+            let body = "# What's Changed\n\n";
+            const zh = { Fix: '修复', Update: '更新', Feature: '新增' };
+            for (const key of ['Fix','Update','Feature']) {
+              if (groups[key].length) {
+                body += `## ${key}\n\n`;
+                for (const i of groups[key]) {
+                  body += `- ${zh[key]}：[#${i.number}](${i.html_url}) ${i.title}\n`;
+                }
+                body += "\n";
+              }
+            }
+            if (compareUrl) {
+              body += `**Full Changelog**: ${compareUrl}\n`;
+            }
+            return body;
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Github Copilot OCS ${{ github.ref_name }}
+          body: ${{ steps.release_notes.outputs.result }}
+          files: |
+            release-artifacts/linux-build/GithubCopilotOCS-Linux_amd64-*
+            release-artifacts/linux-arm64-build/GithubCopilotOCS-Linux_arm64-*
+            release-artifacts/windows-build/GithubCopilotOCS-Win64-*.exe
+            release-artifacts/macos-arm-build/GithubCopilotOCS-macOS_arm64-*
+            release-artifacts/macos-intel-build/GithubCopilotOCS-macOS_amd64-*
