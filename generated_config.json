@@ -1,6 +1,6 @@
 [
   {
-    "name": "Copilot API (gpt-4o)",
+    "name": "Copilot API (gpt-5-mini)",
     "url": "http://localhost:4141/v1/chat/completions",
     "method": "post",
     "contentType": "json",
@@ -10,7 +10,7 @@
       "Authorization": "Bearer dummy"
     },
     "data": {
-      "model": "gpt-4o",
+      "model": "gpt-5-mini",
       "messages": {
         "handler": "build_gpt5_messages"
       },
