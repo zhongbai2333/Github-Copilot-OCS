@@ -1,0 +1,13 @@
+[project]
+name = "ocs-toolkit"
+version = "0.1.0"
+description = "Python helpers for running AnswererWrapper-compatible question bank APIs."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+	"prompt_toolkit>=3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

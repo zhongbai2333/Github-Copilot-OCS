@@ -1,0 +1,21 @@
+[
+  {
+    "name": "Copilot API (gpt-4o)",
+    "url": "http://localhost:4141/v1/chat/completions",
+    "method": "post",
+    "contentType": "json",
+    "headers": {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": "Bearer dummy"
+    },
+    "data": {
+      "model": "gpt-4o",
+      "messages": {
+        "handler": "build_gpt5_messages"
+      },
+      "temperature": 0.2
+    },
+    "handler": "gpt5_response_handler"
+  }
+]
